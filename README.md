@@ -1,6 +1,7 @@
 # cfst-win-GUI
 cfst-win-GUI
 cfst的图形GUI (地区版)
+![Uploading UI cfst-GUI.png…]()
 
 本程序提供cfst的图形操作界面 不包含cfst程序。
 
