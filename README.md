@@ -2,7 +2,8 @@
 cfst-win-GUI
 cfst的图形GUI (地区版)
 
-![cfst-win-GUI](https://github.com/user-attachments/assets/e9fcef94-98fb-4af1-9d77-3f886b4e01b7)
+![cfst-win-GUI](https://github.com/user-attachments/assets/54ad06ba-4323-42f6-b952-2e70dd70a496)
+
 
 本程序提供cfst的图形操作界面 不包含cfst程序。
 
