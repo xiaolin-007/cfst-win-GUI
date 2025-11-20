@@ -1,7 +1,5 @@
-# cfst_gui.py
 # 依赖: PySide6
 # pip install PySide6
-# 运行: python cfst_gui.py
 
 import sys
 import os
@@ -149,7 +147,7 @@ class CFSTGui(QWidget):
         lbl_threads = QLabel("并发线程数")
         lbl_threads.setFixedHeight(28)
         self.spin_threads = QSpinBox()
-        self.spin_threads.setRange(1, 1000)
+        self.spin_threads.setRange(1, 200)
         self.spin_threads.setValue(50)
         self.spin_threads.setFixedWidth(50)
 
