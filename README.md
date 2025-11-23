@@ -1,6 +1,7 @@
 # cfst-win-GUI
 cfst-win-GUI
-cfst的图形GUI (地区版)
+cfst的图形GUI (地区版) 
+使用教程:https://www.youtube.com/watch?v=4DDMcwcRnM0
 
 ![cfst-win-GUI](https://github.com/user-attachments/assets/54ad06ba-4323-42f6-b952-2e70dd70a496)
 
