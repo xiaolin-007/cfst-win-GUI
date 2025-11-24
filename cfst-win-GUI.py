@@ -1,6 +1,3 @@
-# 依赖: PySide6
-# pip install PySide6
-
 import sys
 import os
 import csv
@@ -13,16 +10,13 @@ from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QListWidget, QMessageBox, QListWidgetItem,
     QStatusBar, QSplitter, QTableWidget, QTableWidgetItem, QHeaderView,
-    QSpinBox
+    QSpinBox, QComboBox
 )
 from PySide6.QtGui import QFont, QGuiApplication, QIcon
 from PySide6.QtCore import Qt, QTimer
 
-# ---------- PyInstaller 资源路径 ----------
+# ---------- 兼容 PyInstaller 路径 ----------
 def resource_path(relative_path):
-    """
-    保证打包后能正确找到资源文件（ico 等）
-    """
     if getattr(sys, 'frozen', False):
         return os.path.join(sys._MEIPASS, relative_path)
     return relative_path
@@ -58,7 +52,7 @@ CODE_TO_COUNTRY = {
     "YYZ": "加拿大 (多伦多）",
 }
 
-# ---------- 工具函数 ----------
+# ---------- 辅助 ----------
 def looks_like_ip(s: str) -> bool:
     s = (s or "").strip()
     parts = s.split(".")
@@ -95,24 +89,18 @@ def monitor_process_and_restore(p, on_done_callback, check_interval=0.2):
             QTimer.singleShot(0, lambda: on_done_callback(None))
     threading.Thread(target=runner, daemon=True).start()
 
-# ---------- 主界面 ----------
+# ---------- 主 GUI ----------
 class CFSTGui(QWidget):
-    MAX_DISPLAY_ROWS = 10
+    MAX_DISPLAY_ROWS = 10  # 只显示前 10 行
 
     def __init__(self):
         super().__init__()
-
-        # 设置窗口标题
-        self.setWindowTitle("CFST GUI - 小琳解说")
-
-        # ---------- ★ 程序图标（标题栏 + 任务栏）----------
-        self.setWindowIcon(QIcon(resource_path("xl.ico")))
-
-        self.resize(400, 600)
+        self.setWindowTitle("CFST GUI - 小琳解说 V2.0")
+        self.setWindowIcon(QIcon(resource_path("xl.ico")))  # ★ 图标设置（标题栏 & 任务栏）
+        self.resize(390, 600)
         self.setFont(QFont("Microsoft YaHei", 10))
         self._current_process = None
         self._ui_timer = None
-
         self._build_ui()
         self._bind_events()
 
@@ -121,13 +109,13 @@ class CFSTGui(QWidget):
         root.setContentsMargins(8, 8, 8, 8)
         root.setSpacing(8)
 
-        # 按钮行
+        # 原来 row2 布局替换为：左右弹性间隔 + 居中按钮组
         row2 = QHBoxLayout()
-        row2.setAlignment(Qt.AlignHCenter)
         btn_style = "background:#2ecc71;color:white;border-radius:4px;font-size:11pt;"
         stat_style = "background:#f39c12;color:white;border-radius:4px;font-size:11pt;"
         btn_width = 160; btn_height = 36
 
+        # 创建按钮
         self.btn_scan = QPushButton("一键扫描")
         self.btn_scan.setStyleSheet(btn_style)
         self.btn_scan.setFixedSize(btn_width, btn_height)
@@ -136,50 +124,59 @@ class CFSTGui(QWidget):
         self.btn_stat.setStyleSheet(stat_style)
         self.btn_stat.setFixedSize(btn_width, btn_height)
 
-        row2.addWidget(self.btn_scan)
-        row2.addSpacing(8)
-        row2.addWidget(self.btn_stat)
+        btn_group = QHBoxLayout()
+        btn_group.setSpacing(8)
+        btn_group.addWidget(self.btn_scan)
+        btn_group.addWidget(self.btn_stat)
+
+        row2.addStretch(1)
+        row2.addLayout(btn_group)
+        row2.addStretch(1)
         root.addLayout(row2)
 
-        # 并发线程设置
-        thread_row = QHBoxLayout()
-        thread_row.setAlignment(Qt.AlignHCenter)
-        lbl_threads = QLabel("并发线程数")
-        lbl_threads.setFixedHeight(28)
-        self.spin_threads = QSpinBox()
-        self.spin_threads.setRange(1, 200)
-        self.spin_threads.setValue(50)
-        self.spin_threads.setFixedWidth(50)
+        # 新增：并发线程与扫描端口 同行左右排列（位于一键扫描按钮下面）
+        row_controls = QHBoxLayout()
+        row_controls.addStretch(1)
 
-        thread_row.addWidget(lbl_threads)
-        thread_row.addSpacing(6)
-        thread_row.addWidget(self.spin_threads)
-        root.addLayout(thread_row)
+        # 并发线程控件
+        lbl = QLabel("并发线程")
+        lbl.setFixedHeight(24)
+        self.spin_concurrency = QSpinBox()
+        self.spin_concurrency.setRange(1, 200)
+        self.spin_concurrency.setValue(50)
+        self.spin_concurrency.setFixedWidth(60)
+        row_controls.addWidget(lbl)
+        row_controls.addWidget(self.spin_concurrency)
 
-        # 上下分栏
+        row_controls.addSpacing(12)
+
+        # 端口下拉控件
+        lblp = QLabel("扫描端口")
+        lblp.setFixedHeight(24)
+        self.cmb_port = QComboBox()
+        ports = ["443", "2053", "2083", "2087", "2096", "8443"]
+        self.cmb_port.addItems(ports)
+        self.cmb_port.setCurrentText("443")
+        self.cmb_port.setFixedWidth(70)  # 宽 70
+        row_controls.addWidget(lblp)
+        row_controls.addWidget(self.cmb_port)
+
+        row_controls.addStretch(1)
+        root.addLayout(row_controls)
+
         splitter = QSplitter(Qt.Vertical)
         root.addWidget(splitter, 1)
 
-        # 上部：地区统计
-        top_widget = QWidget()
-        top_layout = QVBoxLayout(top_widget)
-        top_layout.setContentsMargins(6, 6, 6, 6)
-        top_layout.setSpacing(6)
+        top_widget = QWidget(); top_layout = QVBoxLayout(top_widget)
+        top_layout.setContentsMargins(6,6,6,6); top_layout.setSpacing(6)
         top_layout.addWidget(QLabel("地区统计列表"))
-
-        self.lst_regions = QListWidget()
-        self.lst_regions.setSelectionMode(QListWidget.SingleSelection)
+        self.lst_regions = QListWidget(); self.lst_regions.setSelectionMode(QListWidget.SingleSelection)
         top_layout.addWidget(self.lst_regions, 1)
         top_layout.addWidget(QLabel("双击地区载入，点击测速。"))
-
         splitter.addWidget(top_widget)
 
-        # 下部：测速结果
-        bottom_widget = QWidget()
-        bottom_layout = QVBoxLayout(bottom_widget)
-        bottom_layout.setContentsMargins(6, 6, 6, 6)
-        bottom_layout.setSpacing(6)
-        bottom_widget.setMinimumHeight(240)
+        bottom_widget = QWidget(); bottom_layout = QVBoxLayout(bottom_widget)
+        bottom_layout.setContentsMargins(6,6,6,6); bottom_layout.setSpacing(6)
         bottom_layout.addWidget(QLabel("测速结果（双击单元格复制）"))
 
         self.tbl_result = QTableWidget(0, 4)
@@ -187,55 +184,49 @@ class CFSTGui(QWidget):
         header = self.tbl_result.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Interactive)
         header.setStretchLastSection(False)
-
         self.tbl_result.setColumnWidth(0, 118)
-        self.tbl_result.setColumnWidth(1, 68)
-        self.tbl_result.setColumnWidth(2, 80)
-        self.tbl_result.setColumnWidth(3, 66)
+        self.tbl_result.setColumnWidth(1, 62)
+        self.tbl_result.setColumnWidth(2, 72)
+        self.tbl_result.setColumnWidth(3, 62)
         self.tbl_result.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tbl_result.setSelectionBehavior(QTableWidget.SelectRows)
         self.tbl_result.setSortingEnabled(False)
         self.tbl_result.cellDoubleClicked.connect(self._on_cell_double_clicked)
-
         bottom_layout.addWidget(self.tbl_result, 1)
 
-        # 测速按钮
         row_speed = QHBoxLayout()
         row_speed.addStretch(1)
         self.btn_speed = QPushButton("测 速")
         speed_style = "background:#e74c3c;color:white;border-radius:4px;font-size:11pt;"
         self.btn_speed.setStyleSheet(speed_style)
         self.btn_speed.setFixedSize(120, 36)
-        row_speed.addWidget(self.btn_speed)
-        row_speed.addStretch(1)
+        row_speed.addWidget(self.btn_speed); row_speed.addStretch(1)
         bottom_layout.addLayout(row_speed)
 
         splitter.addWidget(bottom_widget)
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 1)
+        splitter.setStretchFactor(0, 1); splitter.setStretchFactor(1, 1)
 
-        # 状态栏
-        self.status = QStatusBar()
-        self.status.showMessage("就绪")
+        self.status = QStatusBar(); self.status.showMessage("就绪")
         root.addWidget(self.status)
 
-    # ---------------- 事件绑定 ----------------
     def _bind_events(self):
         self.btn_scan.clicked.connect(self.on_scan)
         self.btn_stat.clicked.connect(self.on_stat)
         self.lst_regions.itemDoubleClicked.connect(self.on_region_double)
         self.btn_speed.clicked.connect(self.on_speed)
 
-    # ---------------- 双击复制 ----------------
+    # ---------- 双击复制单元格 ----------
     def _on_cell_double_clicked(self, row: int, column: int):
         item = self.tbl_result.item(row, column)
-        if item:
-            text = item.text()
-            QGuiApplication.clipboard().setText(text)
-            self.status.showMessage(f"已复制: {text}")
-            QTimer.singleShot(1500, lambda: self.status.showMessage("就绪"))
+        if item is None:
+            return
+        text = item.text()
+        clipboard = QGuiApplication.clipboard()
+        clipboard.setText(text)
+        self.status.showMessage(f"已复制: {text}")
+        QTimer.singleShot(1500, lambda: self.status.showMessage("就绪"))
 
-    # ---------------- 加载测速结果 ----------------
+    # ---------- 读取 result.csv ----------
     def _load_result_into_table(self):
         if not os.path.isfile(RESULT_CSV):
             self.status.showMessage(f"未找到 {RESULT_CSV}")
@@ -257,7 +248,8 @@ class CFSTGui(QWidget):
             return
 
         try:
-            rows = [r for r in csv.reader(lines, delimiter=",")]
+            reader = csv.reader(lines, delimiter=",")
+            rows = [r for r in reader]
         except Exception:
             rows = [ln.split(",") for ln in lines]
 
@@ -279,8 +271,12 @@ class CFSTGui(QWidget):
         for key, variants in col_map.items():
             for i, h in enumerate(header):
                 hs = h.strip().lower()
-                if any(v.lower() == hs or v.lower() in hs for v in variants):
-                    indices[key] = i
+                for v in variants:
+                    vv = v.lower()
+                    if vv == hs or vv in hs:
+                        indices[key] = i
+                        break
+                if key in indices:
                     break
 
         probable_header = any(k in indices for k in ("ip", "avg_rtt", "down_mb", "region"))
@@ -289,23 +285,30 @@ class CFSTGui(QWidget):
         sample_rows = rows[start_row:start_row+10]
         if "ip" not in indices:
             for c in range(max(len(r) for r in sample_rows) if sample_rows else len(header)):
-                if any(c < len(r) and looks_like_ip(r[c]) for r in sample_rows):
-                    indices["ip"] = c
+                for r in sample_rows:
+                    if c < len(r) and looks_like_ip(r[c]):
+                        indices["ip"] = c
+                        break
+                if "ip" in indices:
                     break
 
         num_cols = max(len(r) for r in rows)
-        indices.setdefault("ip", 0)
-        indices.setdefault("avg_rtt", min(4, num_cols - 1))
-        indices.setdefault("down_mb", min(5, num_cols - 1))
-        indices.setdefault("region", min(6, num_cols - 1))
+        if "ip" not in indices:
+            indices["ip"] = 0
+        if "avg_rtt" not in indices:
+            indices["avg_rtt"] = min(4, num_cols - 1)
+        if "down_mb" not in indices:
+            indices["down_mb"] = min(5, num_cols - 1)
+        if "region" not in indices:
+            indices["region"] = min(6, num_cols - 1)
 
         self.tbl_result.setRowCount(0)
         added = 0
         for r in rows[start_row:]:
-            if added >= self.MAX_DISPLAY_ROWS:
-                break
             if not any(cell.strip() for cell in r):
                 continue
+            if added >= self.MAX_DISPLAY_ROWS:
+                break
 
             def safe_get(idx):
                 return r[idx].strip() if idx < len(r) else ""
@@ -314,9 +317,7 @@ class CFSTGui(QWidget):
             if not ip:
                 for cell in r:
                     if looks_like_ip(cell):
-                        ip = cell.strip()
-                        break
-
+                        ip = cell.strip(); break
             avg_raw = safe_get(indices["avg_rtt"])
             down_raw = safe_get(indices["down_mb"])
             region = safe_get(indices["region"])
@@ -327,20 +328,20 @@ class CFSTGui(QWidget):
             row_idx = self.tbl_result.rowCount()
             self.tbl_result.insertRow(row_idx)
 
-            def mk_item(text):
-                it = QTableWidgetItem(text)
-                it.setTextAlignment(Qt.AlignCenter)
-                return it
+            item_ip = QTableWidgetItem(ip); item_ip.setTextAlignment(Qt.AlignCenter)
+            item_avg = QTableWidgetItem(avg); item_avg.setTextAlignment(Qt.AlignCenter)
+            item_down = QTableWidgetItem(down); item_down.setTextAlignment(Qt.AlignCenter)
+            item_region = QTableWidgetItem(region); item_region.setTextAlignment(Qt.AlignCenter)
 
-            self.tbl_result.setItem(row_idx, 0, mk_item(ip))
-            self.tbl_result.setItem(row_idx, 1, mk_item(avg))
-            self.tbl_result.setItem(row_idx, 2, mk_item(down))
-            self.tbl_result.setItem(row_idx, 3, mk_item(region))
+            self.tbl_result.setItem(row_idx, 0, item_ip)
+            self.tbl_result.setItem(row_idx, 1, item_avg)
+            self.tbl_result.setItem(row_idx, 2, item_down)
+            self.tbl_result.setItem(row_idx, 3, item_region)
+
             added += 1
 
         self.status.showMessage(f"已加载 {added} 条结果（最多显示 {self.MAX_DISPLAY_ROWS} 行）")
 
-    # ---------------- 单位转换 ----------------
     def _normalize_down(self, s: str) -> str:
         s = (s or "").strip()
         if not s:
@@ -348,18 +349,23 @@ class CFSTGui(QWidget):
         low = s.lower().replace(",", "").strip()
         try:
             if "mb" in low:
-                num = ''.join(ch for ch in low if (ch.isdigit() or ch == '.'))
-                return f"{float(num):.2f}" if num else s
+                num = ''.join(ch for ch in low if (ch.isdigit() or ch=='.'))
+                if num:
+                    return f"{float(num):.2f}"
             if "kb" in low:
-                num = ''.join(ch for ch in low if (ch.isdigit() or ch == '.'))
-                return f"{float(num)/1024:.2f}" if num else s
+                num = ''.join(ch for ch in low if (ch.isdigit() or ch=='.'))
+                if num:
+                    return f"{float(num)/1024:.2f}"
             if "b/s" in low or "bps" in low or "byte" in low:
-                num = ''.join(ch for ch in low if (ch.isdigit() or ch == '.'))
-                return f"{float(num)/1024/1024:.2f}" if num else s
-            num = ''.join(ch for ch in low if (ch.isdigit() or ch == '.'))
-            return f"{float(num):.2f}" if num else s
-        except:
-            return s
+                num = ''.join(ch for ch in low if (ch.isdigit() or ch=='.'))
+                if num:
+                    return f"{float(num)/1024/1024:.2f}"
+            num = ''.join(ch for ch in low if (ch.isdigit() or ch=='.'))
+            if num:
+                return f"{float(num):.2f}"
+        except Exception:
+            pass
+        return s
 
     def _normalize_avg(self, s: str) -> str:
         s = (s or "").strip()
@@ -373,11 +379,13 @@ class CFSTGui(QWidget):
             elif num:
                 break
         try:
-            return f"{float(num):.1f}" if num else s
-        except:
-            return s
+            if num:
+                return f"{float(num):.1f}"
+        except Exception:
+            pass
+        return s if len(s) <= 12 else s[:12] + "..."
 
-    # ---------------- 扫描 ----------------
+    # ---------- 扫描 ----------
     def on_scan(self):
         cfst_path = os.path.join(WORK_DIR, DEFAULT_CFST_NAME)
         ip_path = os.path.join(WORK_DIR, DEFAULT_IP_FILENAME)
@@ -389,22 +397,23 @@ class CFSTGui(QWidget):
             missing.append(DEFAULT_IP_FILENAME)
 
         if missing:
-            QMessageBox.warning(self, "缺少文件", f"当前目录缺少：{', '.join(missing)}")
-            self.status.showMessage("缺少文件，扫描取消")
+            QMessageBox.warning(self, "缺少文件", f"当前目录缺少必须的文件：{', '.join(missing)}\n请把这两个文件放到同一目录后再试。")
+            self.status.showMessage("缺少必须文件，扫描被取消")
             return
 
-        threads = int(self.spin_threads.value())
+        # 从输入框读取并发线程数与端口
+        n_threads = str(self.spin_concurrency.value())
+        tp_port = str(self.cmb_port.currentText())
 
         cmd = [
             cfst_path,
-            "-n", str(threads),
-            "-tp", "443",
+            "-n", n_threads,
+            "-tp", tp_port,
             "-url", "https://cf.xiu2.xyz/url",
             "-httping",
             "-dd",
             "-o", REGION_CSV
         ]
-
         self.status.showMessage("扫描在新窗口运行...")
         self.btn_scan.setEnabled(False)
 
@@ -420,34 +429,59 @@ class CFSTGui(QWidget):
             self.btn_scan.setEnabled(True)
             self._current_process = None
             if os.path.isfile(REGION_CSV):
-                self.status.showMessage("扫描完成，请统计地区")
+                self.status.showMessage("扫描完成: region.csv 已生成")
             else:
-                self.status.showMessage("扫描结束")
+                if rc is None:
+                    self.status.showMessage("就绪")
+                else:
+                    self.status.showMessage(f"就绪（扫描结束，退出码 {rc}）")
 
         monitor_process_and_restore(p, on_done)
 
-    # ---------------- 地区统计 ----------------
+        if self._ui_timer is None:
+            self._ui_timer = QTimer(self)
+            def ui_check():
+                if self._current_process is None:
+                    if self._ui_timer:
+                        self._ui_timer.stop()
+                    self._ui_timer = None
+                    return
+                try:
+                    rc = self._current_process.poll()
+                    if rc is not None:
+                        on_done(rc)
+                        if self._ui_timer:
+                            self._ui_timer.stop()
+                        self._ui_timer = None
+                except Exception:
+                    on_done(None)
+                    if self._ui_timer:
+                        self._ui_timer.stop()
+                    self._ui_timer = None
+            self._ui_timer.timeout.connect(ui_check)
+            self._ui_timer.start(300)
+
+    # ---------- 统计 ----------
     def on_stat(self):
         if not os.path.isfile(REGION_CSV):
-            QMessageBox.warning(self, "错误", "找不到 region.csv，请先扫描")
+            QMessageBox.warning(self, "错误", "找不到 region.csv，请先运行扫描生成该文件。")
             return
-
         try:
             with open(REGION_CSV, newline='', encoding='utf-8') as f:
-                rows = list(csv.reader(f))
+                reader = csv.reader(f)
+                rows = list(reader)
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"读取 region.csv 失败: {e}")
+            QMessageBox.critical(self, "错误", f"读取 region.csv 时失败: {e}")
             return
 
         if not rows:
-            QMessageBox.information(self, "提示", "region.csv 内容为空")
+            QMessageBox.information(self, "提示", "region.csv 内容为空。")
             return
 
         header = rows[0]
         lower = [h.strip().lower() for h in header]
         region_idx = -1
         ip_idx = -1
-
         for i, h in enumerate(lower):
             if any(k in h for k in ("colo", "cfcolo", "region", "place", "country")):
                 region_idx = i
@@ -455,11 +489,12 @@ class CFSTGui(QWidget):
                 ip_idx = i
 
         start_row = 1 if region_idx != -1 or ip_idx != -1 else 0
-        if ip_idx == -1 and len(rows) > start_row:
-            for i in range(len(rows[start_row])):
-                if looks_like_ip(rows[start_row][i]):
-                    ip_idx = i
-                    break
+        if ip_idx == -1:
+            if rows and len(rows) > start_row:
+                for i in range(len(rows[start_row])):
+                    if looks_like_ip(rows[start_row][i]):
+                        ip_idx = i
+                        break
         if ip_idx == -1:
             ip_idx = 0
 
@@ -468,7 +503,7 @@ class CFSTGui(QWidget):
             if not r:
                 continue
             ip = r[ip_idx].strip() if ip_idx < len(r) else ""
-            region = r[region_idx].strip() if region_idx != -1 and region_idx < len(r) else ""
+            region = (r[region_idx].strip() if (region_idx != -1 and region_idx < len(r)) else "").strip()
             if not region:
                 token = None
                 for col in r:
@@ -498,49 +533,50 @@ class CFSTGui(QWidget):
 
         self.status.showMessage(f"统计完成，共 {len(items)} 个地区")
 
-    # ---------------- 选择地区 ----------------
+    # ---------- 双击地区 ----------
     def on_region_double(self, item: QListWidgetItem):
         data = item.data(Qt.UserRole)
         if not data:
             return
-
         ips = data.get("ips", [])
         country = data.get("country", "未知")
         uniq = sorted({ip.strip() for ip in ips if ip.strip()})
-
         try:
             with open(REGION_OK, "w", encoding="utf-8") as f:
                 for ip in uniq:
                     f.write(ip + "\n")
-            self.status.showMessage(f"{country}地区 IP 已导入，点击测速")
+            self.status.showMessage(f"{country}地区IP已导入，点击测速。")
         except Exception as e:
-            QMessageBox.warning(self, "保存失败", f"写入 region_ok.txt 出错: {e}")
+            QMessageBox.warning(self, "保存失败", f"保存 region_ok.txt 时失败: {e}")
 
-    # ---------------- 测速 ----------------
+    # ---------- 测速 ----------
     def on_speed(self):
         cfst_path = os.path.join(WORK_DIR, DEFAULT_CFST_NAME)
         if not os.path.isfile(cfst_path):
-            QMessageBox.warning(self, "缺少文件", "找不到 cfst.exe")
+            QMessageBox.warning(self, "缺少文件", f"当前目录缺少 {DEFAULT_CFST_NAME}，请把它放在同一目录后再试。")
             return
         if not os.path.isfile(REGION_OK):
-            QMessageBox.warning(self, "缺少文件", "找不到 region_ok.txt，请先双击地区")
+            QMessageBox.information(self, "提示", "找不到 region_ok.txt，请先双击某个地区以自动提取并保存 IP。")
             return
 
         try:
             if os.path.isfile(RESULT_CSV):
                 os.remove(RESULT_CSV)
-        except:
+        except Exception:
             pass
+
+        # 使用并发输入框的值作为测速的 -n，同时使用端口下拉的值作为 -tp
+        n_threads = str(self.spin_concurrency.value())
+        tp_port = str(self.cmb_port.currentText())
 
         cmd = [
             cfst_path,
-            "-n", "100",
-            "-tp", "443",
+            "-n", n_threads,
+            "-tp", tp_port,
             "-f", REGION_OK,
             "-o", RESULT_CSV
         ]
-
-        self.status.showMessage("测速中...")
+        self.status.showMessage("测速正在进行中...")
         self.btn_speed.setEnabled(False)
 
         p = start_process_new_console(cmd)
@@ -554,17 +590,47 @@ class CFSTGui(QWidget):
         def on_done(rc):
             self.btn_speed.setEnabled(True)
             self._current_process = None
-
             if os.path.isfile(RESULT_CSV):
-                self.status.showMessage("测速完成，加载结果...")
+                self.status.showMessage("测速完成: result.csv 已生成")
                 try:
                     self._load_result_into_table()
                 except Exception as e:
-                    self.status.showMessage(f"加载失败: {e}")
+                    self.status.showMessage(f"就绪（加载结果失败: {e}）")
             else:
-                self.status.showMessage("测速结束")
+                if rc is None:
+                    self.status.showMessage("就绪")
+                else:
+                    self.status.showMessage(f"就绪（测速结束，退出码 {rc}）")
 
         monitor_process_and_restore(p, on_done)
+
+        if self._ui_timer is None:
+            self._ui_timer = QTimer(self)
+            def ui_check():
+                if self._current_process is None:
+                    if self._ui_timer:
+                        self._ui_timer.stop()
+                    self._ui_timer = None
+                    if os.path.isfile(RESULT_CSV):
+                        try:
+                            self._load_result_into_table()
+                        except Exception:
+                            pass
+                    return
+                try:
+                    rc = self._current_process.poll()
+                    if rc is not None:
+                        on_done(rc)
+                        if self._ui_timer:
+                            self._ui_timer.stop()
+                        self._ui_timer = None
+                except Exception:
+                    on_done(None)
+                    if self._ui_timer:
+                        self._ui_timer.stop()
+                    self._ui_timer = None
+            self._ui_timer.timeout.connect(ui_check)
+            self._ui_timer.start(300)
 
 # ---------- 启动 ----------
 def main():
