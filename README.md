@@ -1,4 +1,4 @@
-# cfst-win-GUI V2.0
+# cfst-win-GUI V2.1
 
 CloudflareSpeedTest的图形GUI (地区版) 
 
