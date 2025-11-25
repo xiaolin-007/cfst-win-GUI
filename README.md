@@ -2,7 +2,7 @@
 
 CloudflareSpeedTest的图形GUI (地区版) 
 
-<img width="836" height="644" alt="gui" src="https://github.com/user-attachments/assets/4e38accf-f3be-4e48-9ff7-987cbaf717b3" />
+<img width="522" height="403" alt="gui" src="https://github.com/user-attachments/assets/4e38accf-f3be-4e48-9ff7-987cbaf717b3" />
 
 使用教程:https://www.youtube.com/watch?v=4DDMcwcRnM0
 
