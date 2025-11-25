@@ -38,6 +38,7 @@ CODE_TO_COUNTRY = {
     "MSP": "美国 (明尼阿波利斯)", "SLC": "美国 (盐湖城)", "TPA": "美国 (坦帕)",
     "NRT": "日本 (成田)", "HND": "日本 (羽田)", "KIX": "日本 (关西)", "FUK": "日本 (福冈)",
     "HKG": "中国 (香港)",
+    "TPE": "中国 (台湾台北)", "KHH": "中国 (台湾高雄)",
     "LHR": "英国 (伦敦希思罗)", "LGW": "英国 (伦敦盖特威克)",
     "CDG": "法国 (巴黎戴高乐)", "ORY": "法国 (巴黎奥利)",
     "FRA": "德国 (法兰克福)", "MUC": "德国 (慕尼黑)",
@@ -95,8 +96,8 @@ class CFSTGui(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CFST GUI - 小琳解说 V2.0")
-        self.setWindowIcon(QIcon(resource_path("xl.ico")))  # ★ 图标设置（标题栏 & 任务栏）
+        self.setWindowTitle("CFST GUI - 小琳解说 V2.1")
+        self.setWindowIcon(QIcon(resource_path("xl.ico")))
         self.resize(390, 600)
         self.setFont(QFont("Microsoft YaHei", 10))
         self._current_process = None
@@ -144,7 +145,7 @@ class CFSTGui(QWidget):
         self.spin_concurrency = QSpinBox()
         self.spin_concurrency.setRange(1, 200)
         self.spin_concurrency.setValue(50)
-        self.spin_concurrency.setFixedWidth(60)
+        self.spin_concurrency.setFixedWidth(70)
         row_controls.addWidget(lbl)
         row_controls.addWidget(self.spin_concurrency)
 
@@ -157,7 +158,7 @@ class CFSTGui(QWidget):
         ports = ["443", "2053", "2083", "2087", "2096", "8443"]
         self.cmb_port.addItems(ports)
         self.cmb_port.setCurrentText("443")
-        self.cmb_port.setFixedWidth(70)  # 宽 70
+        self.cmb_port.setFixedWidth(70)
         row_controls.addWidget(lblp)
         row_controls.addWidget(self.cmb_port)
 
